@@ -1,1 +1,1692 @@
+# include <iostream>
+# include <string>
+# include <string.h>
+# include <vector>
+# include <cstdio>
+# include <sstream>
 
+using namespace std;
+
+struct Token {
+  string type ;
+  string str ;
+  int line ;
+  int column ;
+  Token* left ;
+  Token* right ;
+};
+
+struct Def {
+  Token* define_symbol ;
+  Token* token ;
+};
+
+vector< Def >  g_define ;
+int g_running_line = 1 ;
+int g_running_column = 0 ;
+bool g_first_line_empty = false ;
+bool g_exit = false ;
+
+Token* Exit( Token* temp_token, int level ) ;
+
+Token* Define( Token* temp_token, int level ) ;
+
+Token* Car( Token* temp_token, int level ) ;
+
+Token* Quote( Token* temp_token, int level ) ;
+
+Token* List( Token* temp_token, int level ) ;
+
+Token* Cons( Token* temp_token, int level ) ;
+
+Token* Clean_Environment( Token* temp_token, int level ) ;
+
+bool Isatom( Token* temp_token ) ;
+
+bool Ispair( Token* temp_token ) ;
+
+bool Islist( Token* temp_token ) ;
+
+bool Isnull( Token* temp_token ) ;
+
+bool Isboolean( Token* temp_token ) ;
+
+bool Isstring( Token* temp_token ) ;
+
+bool Issymbol( Token* temp_token ) ;
+
+Token* Compare( Token* temp_token, int level ) ;
+
+Token* String_append( Token* temp_token, int level ) ;
+
+Token* Plus_Minus_Multi_Divid( Token* temp_token, int level ) ;
+
+Token* Not( Token* temp_token, int level ) ;
+
+Token* And_Or( Token* temp_token, int level ) ;
+
+Token* Eqv( Token* temp_token, int level ) ;
+
+bool IsEqual( Token* temp_token1, Token* temp_token2 ) ;
+
+Token* Equal( Token* temp_token, int level ) ;
+
+Token* Begin( Token* temp_token, int level ) ;
+
+Token* Copy_tree( Token* temp_token ) ;
+
+Token* If( Token* temp_token, int level ) ;
+
+bool Check_iscond( Token* temp_token ) ;
+
+Token* Cond( Token* temp_token, int level ) ;
+
+int Compare( string str1, string str2 ) ;
+
+bool Compare_iscorrect( int num, Token* temp_token ) ;
+
+Token* Distinguish( Token* temp_token, int level ) ;
+
+Token* Chang_Argument_left( bool defined_symbol, Token* temp_token, int level ) ;
+
+Token* Chang_Argument_right( bool defined_symbol, Token* temp_token, int level ) ;
+
+Token* Is_TopExp( Token* temp_token ) ;
+
+Token* EvalSExp( Token* temp_token, int level ) ;
+
+int Argument_Num( Token* temp_token ) ;
+
+Token* Token_t_nil( bool is_true, Token* temp_token ) ;
+
+string Symbol_bigger_smaller( int num ) ;
+
+void Print_define_error( Token* temp_token ) ;
+
+void Print_cond_error( Token* temp_token ) ;
+
+void Print_cmptype_error( int num, Token* temp_token, Token* print_token ) ;
+
+void Print_unbound_error( Token* temp_token ) ;
+
+void Print_nonlist_error( Token* temp_token ) ;
+
+void Print_func_error( Token* temp_token ) ;
+
+Token* New_result( string str ) ;
+
+Token* New_Token( Token* temp_token ) ;
+
+Def* New_Define( Def* temp_define ) ;
+
+Token* Build( Token* temp_token, string &str, char &c, int &line, int &column ) ;
+
+int Print( Token* temp_token ) ;
+
+void Turn_nil_true( Token* temp_token ) ;
+
+void Print_Tree( Token* temp_token, string space ) ;
+
+bool Build_Tree( Token* temp_token, char &c, string &str, int &line, int &column, int &exp_num ) ;
+
+bool Build_quote_Tree( Token* temp_token, char &c, string &str, int &line, int &column ) ;
+
+bool Error_EOF( string str, char c, int line, int column ) ; 
+// 當遇到 EOF 和 " 沒有第二個 " 的ERROR時回傳 TRUE // 
+
+void Print_error( string str, int line, int column, int choice ) ;
+
+void GetChar( char &c ) ;
+
+string Get_Token( char &c, int &line, int &column ) ;
+
+string Turn_nil_t_quote( string str ) ;
+
+void Change_float( string &str ) ;
+
+double Str_To_Double( string str ) ;
+
+string Double_To_Str( double num ) ;
+
+int IsDefine( Token* token ) ;
+
+bool Isfunction( string str ) ;
+
+bool Isinteger( string str ) ;
+
+bool Isfloat( string str ) ;
+
+int main() {
+  vector<Token> token ;
+  int testNum ;
+  int line = 1 ;
+  int column = 0 ;
+  char trash ;
+  char c = ' ' ;
+  cin >> testNum ;
+  trash = getchar() ;
+  cout << "Welcome to OurScheme!" << endl ;
+
+  // if ( testNum == 2 ) cout << "0" ;
+  while ( c != EOF ) {  
+    cout << endl << "> " ; 
+    Token* temp_token ;
+    temp_token = New_Token( temp_token ) ;  
+    string str = Get_Token( c, line, column ) ;  
+    
+    if ( Error_EOF( str, c, line, column ) ) ;  
+    else {
+      temp_token = Build( temp_token, str, c, line, column ) ;
+      Turn_nil_true( temp_token ) ;
+      
+
+      if ( temp_token == NULL ) ;
+      else if ( temp_token->left == NULL && temp_token->right == NULL && Issymbol( temp_token ) ) {
+        int i = IsDefine( temp_token ) ;
+        if ( i >= 0 ) temp_token = g_define[i].token ;
+        else {
+          if ( Isfunction( temp_token->str ) ) temp_token->str = "#<procedure " + temp_token->str + ">" ;
+          else {
+            Print_unbound_error( temp_token ) ;
+            temp_token = NULL ;
+          } // else()
+
+        } // else()
+      } // else if() 
+      else if ( temp_token->left == NULL && temp_token->right == NULL && Isatom( temp_token ) ) ;
+      else {
+        int level = 0 ;
+        temp_token = Chang_Argument_left( true, temp_token, level ) ;
+      } // else()
+
+      if ( g_exit ) return 0 ;
+
+      if ( !Print( temp_token ) ) return 0 ;
+
+    } // else()
+
+    g_running_line = 1 ;
+    g_running_column = 0 ;
+    g_first_line_empty = false ; 
+  } // while()
+
+  cout << "Thanks for using OurScheme!" << endl ;
+} // main()
+
+Token* Cons( Token* temp_token, int level ) {
+
+  if ( Argument_Num( temp_token ) != 2 ) {
+    cout << "ERROR (incorrect number of arguments) : cons" << endl ;
+    return NULL ;
+  } // if()
+  else { // Argument為兩個 
+    temp_token->right = Chang_Argument_right( true, temp_token->right, level ) ;
+    if ( temp_token->right == NULL ) return NULL ;
+
+    temp_token->right->right = temp_token->right->right->left ;
+    return temp_token->right ;
+  } // else()
+} // Cons()
+
+Token* List( Token* temp_token, int level ) {
+  if ( Argument_Num( temp_token ) < 0 ) {
+    cout << "ERROR (incorrect number of arguments) : list" << endl ;
+    return NULL ;
+  } // if()
+  else { 
+    temp_token->right = Chang_Argument_right( true, temp_token->right, level ) ;
+    if ( temp_token->right == NULL ) return NULL ;
+
+    return temp_token->right ;
+  } // else()
+} // List()
+
+Token* Quote( Token* temp_token, int level ) {
+  if ( Argument_Num( temp_token ) != 1 ) {
+    cout << "ERROR (incorrect number of arguments) : quote" << endl ;
+    return NULL ;
+  } // if()
+  else { 
+    return temp_token->right->left ;
+  } // else()
+} // Quote()
+
+Token* Car( Token* temp_token, int level ) {
+  if ( Argument_Num( temp_token ) != 1 ) {
+    cout << "ERROR (incorrect number of arguments) : car" << endl ;
+    return NULL ;
+  } // if()
+  else { 
+    temp_token->right = Chang_Argument_right( true, temp_token->right, level ) ;
+    if ( temp_token->right == NULL ) return NULL ;
+
+    if ( ! Ispair( temp_token->right->left ) ) {
+      cout << "ERROR (car with incorrect argument type) : " ;
+      Print( temp_token->right->left ) ;
+      return NULL ;
+    } // if() 
+
+    return temp_token->right->left->left ;
+  } // else()
+} // Car()
+
+Token* Cdr( Token* temp_token, int level ) {
+  if ( Argument_Num( temp_token ) != 1 ) {
+    cout << "ERROR (incorrect number of arguments) : cdr" << endl ;
+    return NULL ;
+  } // if()
+  else { 
+    temp_token->right = Chang_Argument_right( true, temp_token->right, level ) ;
+    if ( temp_token->right == NULL ) return NULL ;
+
+    if ( ! Ispair( temp_token->right->left ) ) {
+      cout << "ERROR (cdr with incorrect argument type) : " ;
+      Print( temp_token->right->left ) ;
+      return NULL ;
+    } // if() 
+
+    return temp_token->right->left->right ;
+  } // else()
+} // Cdr()
+
+Token* Exit( Token* temp_token, int level ) {
+  if ( Argument_Num( temp_token ) != 0 ) {
+    cout << "ERROR (incorrect number of arguments) : exit" << endl ;
+    return NULL ;
+  } // if()
+  else { 
+    cout << endl << "Thanks for using OurScheme!" ;
+    g_exit = true ;
+    return NULL ;
+  } // else()
+} // Exit()
+
+int IsDefine( Token* token ) { // -1 為 不在 //
+  for ( int i = g_define.size() - 1 ; i >= 0 ; i-- ) {
+    if ( g_define[i].define_symbol->str == token->str && token->str != "" ) return i ;
+    else if ( g_define[i].define_symbol->str == token->str ) {
+      if ( g_define[i].define_symbol->left == NULL || token->left == NULL ) return -1 ; 
+      // 不會發生但寫著防止out of range // 
+
+      if ( g_define[i].define_symbol->left->str == token->left->str ) return i ;
+    } // else if()
+  } // for()
+
+  return -1 ;
+} // IsDefine()
+
+bool Check_allSymbol( Token* temp_token ) {
+  while ( temp_token->left != NULL && temp_token->right != NULL ) {
+    if ( ! Issymbol( temp_token->left ) || Isfunction( temp_token->left->str ) ) return false ;
+    temp_token = temp_token->right ;
+  } // while()
+
+  return true ;
+} // Check_allSymbol()
+
+Token* Define( Token* temp_token, int level ) { 
+
+  if ( Argument_Num( temp_token ) != 2 ) {
+    Print_define_error( temp_token ) ;
+    return NULL ;
+  } // if()
+  else if ( temp_token->right->left->str == "" && ! Check_allSymbol( temp_token->right->left ) ) {
+    Print_define_error( temp_token ) ;
+    return NULL ;
+  } // else if()
+  else if ( temp_token->right->left->str != "" && 
+            ( ! Issymbol( temp_token->right->left ) || Isfunction( temp_token->right->left->str ) ) ) {
+    Print_define_error( temp_token ) ;
+    return NULL ;
+  } // else if()
+  else { 
+    if ( temp_token->right->left->str != "" ) {
+      temp_token->right->right = Chang_Argument_right( true, temp_token->right->right, level ) ;
+      if ( temp_token->right->right == NULL ) return NULL ;
+    } // if()
+
+    // if ( !Issymbol( temp_token->right->left ) ) return NULL ;
+
+    int i = IsDefine( temp_token->right->left ) ;
+    if ( i >= 0 ) g_define[i].token = temp_token->right->right->left ; 
+    else {
+      Def temp_define ;
+
+      temp_define.define_symbol = temp_token->right->left ;
+      temp_define.token = temp_token->right->right->left ;
+      g_define.push_back( temp_define ) ;
+    } // else()
+
+    if ( temp_token->right->left->str != "" ) cout << temp_token->right->left->str << " defined" << endl ;
+    else cout << temp_token->right->left->left->str << " defined" << endl ;
+
+    return NULL ;
+  } // else()
+} // Define()
+
+Token* Clean_Environment( Token* temp_token, int level ) {
+  if ( Argument_Num( temp_token ) != 0 ) {
+    cout << "ERROR (incorrect number of arguments) : clean_environment" << endl ;
+    return NULL ;
+  } // if()
+  else { 
+    g_define.clear() ;
+    temp_token->left->str = "environment cleaned" ;
+    return temp_token->left ;
+  } // else()
+} // Clean_Environment()
+
+bool Isatom( Token* temp_token ) {
+  if ( temp_token->str == "" ) return false ;
+  else if ( Isstring( temp_token ) ) return true ;
+  else if ( Isinteger( temp_token->str ) ) return true ;
+  else if ( Isfloat( temp_token->str ) ) return true ;
+  else if ( Isstring( temp_token ) ) return true ;
+  else if ( Isboolean( temp_token ) ) return true ;
+  else return false ;
+} // Isatom()
+
+bool Ispair( Token* temp_token ) {
+  if ( temp_token->left != NULL && temp_token->right != NULL ) return true ;
+  else return false ;
+} // Ispair()
+
+bool Islist( Token* temp_token ) {
+  while ( temp_token->right != NULL ) {
+    temp_token = temp_token->right ;
+  } // while()
+
+  if ( temp_token->str == "nil" ) return true ;
+  else return false ;
+} // Islist()
+
+bool Isnull( Token* temp_token ) {
+  if ( temp_token->str == "nil" ) return true ;
+  else return false ;
+} // Isnull()
+
+bool Isboolean( Token* temp_token ) {
+  if ( temp_token->str == "nil" || temp_token->str == "#t" ) return true ;
+  else return false ;
+} // Isboolean()
+
+bool Isstring( Token* temp_token ) {
+  if ( temp_token->str == "" ) return false ;
+  else if ( temp_token->str.at( 0 ) == '\"' ) return true ;
+  else return false ;
+} // Isstring()
+
+bool Issymbol( Token* temp_token ) {
+  if ( temp_token->str == "" ) return false ;
+  else if ( Isinteger( temp_token->str ) ) return false ;
+  else if ( Isfloat( temp_token->str ) ) return false ;
+  else if ( Isboolean( temp_token ) ) return false ;
+  else if ( Isstring( temp_token ) ) return false ;
+  else if ( temp_token->str.at( 0 ) == '(' || temp_token->str.at( 0 ) == ')' ) return false ;
+  else return true ;
+} // Issymbol()
+
+Token* Compare( Token* temp_token, int level ) {
+  if ( Argument_Num( temp_token ) < 2 ) {
+    cout << "ERROR (incorrect number of arguments) : " << temp_token->left->str << endl ;
+    return NULL ;
+  } // if()
+  else {
+    int num = 0 ;
+    temp_token->right = Chang_Argument_right( true, temp_token->right, level ) ;
+    if ( temp_token->right == NULL ) return NULL ; 
+
+    if ( temp_token->left->str == ">" ) num = 1 ;
+    else if ( temp_token->left->str == "<" ) num = 2 ;
+    else if ( temp_token->left->str == "=" ) num = 3 ;
+    else if ( temp_token->left->str == ">=" ) num = 4 ;
+    else if ( temp_token->left->str == "<=" ) num = 5 ;
+
+    for ( Token* temp = temp_token->right ; temp->right != NULL ; temp = temp->right ) {
+      if ( !Isinteger( temp->left->str ) && !Isfloat( temp->left->str ) && !Isstring( temp->left ) ) {
+        cout << "ERROR (" <<  temp_token->left->str << " with incorrect argument type) : " ;
+        Print( temp->left ) ;
+        return NULL ;
+      } // if()
+    } // for()
+    
+    for ( Token* temp = temp_token->right ; temp->right->right != NULL ; temp = temp->right ) {
+      if ( !Compare_iscorrect( num, temp ) ) return Token_t_nil( false, temp_token ) ;
+    } // for()
+
+    return Token_t_nil( true, temp_token ) ;
+  } // else()
+
+  return temp_token ;
+} // Compare()
+
+Token* String_append( Token* temp_token, int level ) {
+  if ( Argument_Num( temp_token ) < 2 ) {
+    cout << "ERROR (incorrect number of arguments) : string-append" << endl ;
+    return NULL ;
+  } // if()
+  else {
+    temp_token->right = Chang_Argument_right( true, temp_token->right, level ) ;
+    if ( temp_token->right == NULL ) return NULL ; 
+	cout << "ff" ;
+    for ( Token* temp = temp_token->right ; temp->right != NULL ; temp = temp->right ) {
+      cout << "22" ;
+      if ( !Isstring( temp->left ) ) {
+        cout << "ERROR (string-append with incorrect argument type) : " ;
+        Print( temp->left ) ;
+        return NULL ;
+      } // if()
+      cout << "11" ;
+    } // for()
+	cout << "11" ;
+    string str = temp_token->right->left->str ;
+    str.erase( 0, 1 ) ;
+    str.erase( str.size() - 1, 1 ) ;
+    for ( Token* temp = temp_token->right->right ; temp->right != NULL ; temp = temp->right ) {
+      string temp_str = temp->left->str ;
+      temp_str.erase( temp_str.size() - 1, 1 ) ;
+      temp_str.erase( 0, 1 ) ;
+      str += temp_str ; 
+    } // for()
+
+    return New_result( "\"" + str + "\"" ) ;
+
+  } // else()
+
+  return temp_token ;
+} // String_append()
+
+Token* Plus_Minus_Multi_Divid( Token* temp_token, int level ) {
+  if ( Argument_Num( temp_token ) < 2 ) {
+    cout << "ERROR (incorrect number of arguments) : " << temp_token->left->str << endl ;
+    return NULL ;
+  } // if()
+  else {
+    int num = 0 ;
+    bool first = true ;
+    temp_token->right = Chang_Argument_right( true, temp_token->right, level ) ;
+    if ( temp_token->right == NULL ) return NULL ; 
+
+    for ( Token* temp = temp_token->right ; temp->right != NULL ; temp = temp->right ) {
+      if ( !Isinteger( temp->left->str ) && !Isfloat( temp->left->str ) ) {
+        cout << "ERROR (" << temp_token->left->str << " with incorrect argument type) : " ;
+        Print( temp->left ) ;
+        return NULL ;
+      } // if()
+      else if ( temp_token->left->str == "/" && temp->left->str == "0" && !first ) {
+        cout << "ERROR (division by zero) : /" << endl ;
+        return NULL ;
+      } // else if()
+
+      first = false ;
+    } // for()
+
+    string str = temp_token->right->left->str ;
+    for ( Token* temp = temp_token->right->right ; temp->right != NULL ; temp = temp->right ) {
+      double num ;
+      bool isint = false ;
+      if ( temp_token->left->str == "+" ) 
+        num = Str_To_Double( str ) + Str_To_Double( temp->left->str ) ;
+      else if ( temp_token->left->str == "-" ) 
+        num = Str_To_Double( str ) - Str_To_Double( temp->left->str ) ;
+      else if ( temp_token->left->str == "*" ) 
+        num = Str_To_Double( str ) * Str_To_Double( temp->left->str ) ;
+      else if ( temp_token->left->str == "/" ) 
+        num = Str_To_Double( str ) / Str_To_Double( temp->left->str ) ;
+
+      if ( Isinteger( str ) && Isinteger( temp->left->str ) ) isint = true ;
+      str = Double_To_Str( num ) ;
+      if ( isint ) {
+        num = ( int ) num ;
+        str = Double_To_Str( num ) ;
+      } // if() 
+      else if ( ! Isfloat( str ) ) {
+        str += "." ;
+      } // else if()
+      
+      Change_float( str ) ;
+    } // for()
+
+    return New_result( str ) ;
+
+  } // else()
+
+  return temp_token ;  
+} // Plus_Minus_Multi_Divid()
+
+Token* Not( Token* temp_token, int level ) {
+  if ( Argument_Num( temp_token ) != 1 ) {
+    cout << "ERROR (incorrect number of arguments) : not" << endl ;
+    return NULL ;
+  } // if()
+  else { 
+    temp_token->right = Chang_Argument_right( true, temp_token->right, level ) ;
+    if ( temp_token->right == NULL ) return NULL ;
+
+    if ( temp_token->right->left->str == "nil" ) return Token_t_nil( true, temp_token ) ;
+
+    return Token_t_nil( false, temp_token ) ;
+  } // else()
+} // Not()
+
+Token* And_Or( Token* temp_token, int level ) {
+  if ( Argument_Num( temp_token ) < 2 ) {
+    cout << "ERROR (incorrect number of arguments) : " << temp_token->left->str << endl ;
+    return NULL ;
+  } // if()
+  else { 
+  
+    for ( Token* temp = temp_token->right ; temp->right != NULL ; temp = temp->right ) {
+      temp = Chang_Argument_right( false, temp, level ) ;
+      if ( temp == NULL ) return NULL ;
+
+      if ( temp_token->left->str == "and" && temp->left->str == "nil" ) 
+        return Token_t_nil( false, temp_token ) ;
+      else if ( temp_token->left->str == "or" && temp->left->str != "nil" ) 
+        return temp->left ;
+
+      if ( temp->right->right == NULL ) return temp->left ;
+    } // for() 
+
+    return temp_token ;
+  } // else()
+} // And_Or()
+
+Token* Eqv( Token* temp_token, int level ) {
+  if ( Argument_Num( temp_token ) != 2 ) {
+    cout << "ERROR (incorrect number of arguments) : " << temp_token->left->str << endl ;
+    return NULL ;
+  } // if()
+  else { 
+
+    if ( Isatom( temp_token->right->left ) && Isatom( temp_token->right->right->left ) && 
+         ! Isstring( temp_token->right->left ) && ! Isstring( temp_token->right->right->left ) && 
+         ! Issymbol( temp_token->right->left ) && ! Issymbol( temp_token->right->right->left ) && 
+         Compare( temp_token->right->left->str, temp_token->right->right->left->str ) == 0 ) {
+      temp_token->right = Chang_Argument_right( true, temp_token->right, level ) ;
+      if ( temp_token->right == NULL ) return NULL ;
+      return Token_t_nil( true, temp_token ) ;
+    } // if()
+
+    temp_token->right = Chang_Argument_right( true, temp_token->right, level ) ;
+    if ( temp_token->right == NULL ) return NULL ;
+
+    if ( temp_token->right->left == temp_token->right->right->left ) {
+      return Token_t_nil( true, temp_token ) ;
+    } // if()
+    else return Token_t_nil( false, temp_token ) ;
+
+
+    return temp_token ;
+  } // else()
+} // Eqv()
+
+bool IsEqual( Token* temp_token1, Token* temp_token2 ) {
+  if ( temp_token1 == NULL && temp_token2 == NULL ) return true ;
+  else if ( temp_token1 == NULL || temp_token2 == NULL ) return false ;
+  else if ( Compare( temp_token1->str, temp_token2->str ) != 0 ) return false ;
+  else {
+    if ( ! IsEqual( temp_token1->left, temp_token2->left ) || 
+         ! IsEqual( temp_token1->right, temp_token2->right ) )
+      return false ;
+  } // else() 
+
+  return true ;
+} // IsEqual() 
+
+Token* Equal( Token* temp_token, int level ) {
+  if ( Argument_Num( temp_token ) != 2 ) {
+    cout << "ERROR (incorrect number of arguments) : " << temp_token->left->str << endl ;
+    return NULL ;
+  } // if()
+  else { 
+    temp_token->right = Chang_Argument_right( true, temp_token->right, level ) ;
+    if ( temp_token->right == NULL ) return NULL ;
+
+    if ( IsEqual( temp_token->right->left, temp_token->right->right->left ) ) {
+      return Token_t_nil( true, temp_token ) ;
+    } // if()
+    else return Token_t_nil( false, temp_token ) ;
+
+    return temp_token ;
+  } // else()
+} // Equal()
+
+Token* Begin( Token* temp_token, int level ) {
+  if ( Argument_Num( temp_token ) < 1 ) {
+    cout << "ERROR (incorrect number of arguments) : " << temp_token->left->str << endl ;
+    return NULL ;
+  } // if()
+  else { 
+    temp_token->right = Chang_Argument_right( true, temp_token->right, level ) ;
+    if ( temp_token->right == NULL ) return NULL ;
+
+    for ( Token* temp = temp_token->right ; temp->right != NULL ; temp = temp->right ) {
+      if ( temp->right->right == NULL ) return temp->left ;
+    } // for() 
+    
+    return temp_token ;
+  } // else()
+} // Begin()
+
+Token* Copy_tree( Token* temp_token ) {
+  if ( temp_token == NULL ) return NULL ;
+  else {
+    Token* temp ;
+    temp = New_Token( temp ) ;
+    temp->type = temp_token->type ;
+    temp->str = temp_token->str ;
+    temp->line = temp_token->line ;
+    temp->column = temp_token->column ;    
+    temp->left = Copy_tree( temp_token->left ) ;
+    temp->right = Copy_tree( temp_token->right ) ;
+    return temp ;
+  } // else()
+
+  return temp_token ;
+} // Copy_tree()
+
+Token* If( Token* temp_token, int level ) {
+  Token* temp_tree = Copy_tree( temp_token ) ;
+  if ( Argument_Num( temp_token ) != 2 && Argument_Num( temp_token ) != 3 ) {
+    cout << "ERROR (incorrect number of arguments) : " << temp_token->left->str << endl ;
+    return NULL ;
+  } // if()
+  else { 
+    temp_token->right = Chang_Argument_right( false, temp_token->right, level ) ;
+    if ( temp_token->right == NULL ) return NULL ;
+
+    if ( temp_token->right->left->str != "nil" ) {
+      temp_token->right->right = Chang_Argument_right( false, temp_token->right->right, level ) ;
+      if ( temp_token->right->right == NULL ) return NULL ;
+      return temp_token->right->right->left ;
+    } // if()
+    else if ( Argument_Num( temp_token ) == 2 ) {
+      cout << "ERROR (no return value) : " ;
+      Print( temp_tree ) ; 
+      return NULL ;
+    } // else if()
+    else {
+      temp_token->right->right->right = 
+      Chang_Argument_right( false, temp_token->right->right->right, level ) ;
+      if ( temp_token->right->right->right == NULL ) return NULL ;
+      return temp_token->right->right->right->left ;
+    } // else()
+
+    return temp_token ;
+  } // else()
+} // If()
+
+bool Check_iscond( Token* temp_token ) {
+  while ( temp_token->right != NULL ) {
+    if ( ! Islist( temp_token->left ) ) return false ;
+    else if ( Argument_Num( temp_token->left ) < 1 ) return false ;
+
+    temp_token = temp_token->right ;
+  } // while()
+
+  return true ;
+} // Check_iscond()
+
+Token* Cond( Token* temp_token, int level ) {
+  Token* temp_tree = Copy_tree( temp_token ) ;
+  if ( ! Check_iscond( temp_token->right ) || Argument_Num( temp_token ) < 1 ) {
+    Print_cond_error( temp_token ) ;
+    return NULL ;
+  } // if()
+  else { 
+    for ( Token* temp = temp_token->right ; temp->right != NULL ; temp = temp->right ) {
+
+
+      if ( temp->right->right == NULL && temp->left->left->str == "else" ) {
+
+        for ( Token* temp2 = temp->left ; temp2->right != NULL ; temp2 = temp2->right ) {
+          temp2->right = Chang_Argument_right( false, temp2->right, level ) ;
+          if ( temp2->right == NULL ) return NULL ;
+
+          if ( temp2->right->right == NULL ) return temp2->left ;
+        } // for()
+      } // if()
+
+      temp->left = Chang_Argument_right( false, temp->left, level ) ;
+      if ( temp->left == NULL ) return NULL ;
+
+      if ( temp->left->left->str != "nil" ) {
+ 
+        for ( Token* temp2 = temp->left ; temp2->right != NULL ; temp2 = temp2->right ) {
+          temp2->right = Chang_Argument_right( false, temp2->right, level ) ;
+          if ( temp2->right == NULL ) return NULL ;
+
+          if ( temp2->right->right == NULL ) return temp2->left ;
+        } // for()
+      } // if()
+
+      if ( temp->right->right == NULL ) {
+        cout << "ERROR (no return value) : " ;
+        Print( temp_tree ) ;
+        return NULL ;
+      } // if()
+      
+    } // for()
+
+    return temp_token ;
+  } // else()
+} // Cond()
+
+int Compare( string str1, string str2 ) {
+  if ( ( Isinteger( str1 ) || Isfloat( str1 ) ) && ( Isinteger( str2 ) || Isfloat( str2 ) ) ) {
+    if ( Str_To_Double( str1 ) < Str_To_Double( str2 ) ) return -1 ;
+    else if ( Str_To_Double( str1 ) == Str_To_Double( str2 ) ) return 0 ;
+    else if ( Str_To_Double( str1 ) > Str_To_Double( str2 ) ) return 1 ;
+    else return 0 ;
+  } // if()
+  else {
+    if ( str1 < str2 ) return -1 ;
+    else if ( str1 == str2 ) return 0 ;
+    else if ( str1 > str2 ) return 1 ;
+    else return 0 ;
+  } // else()
+} // Compare()
+
+bool Compare_iscorrect( int num, Token* temp_token ) {  
+  if ( num == 1 && Compare( temp_token->left->str, temp_token->right->left->str ) > 0 ) return true ;
+  else if ( num == 2 && Compare( temp_token->left->str, temp_token->right->left->str ) < 0 ) return true ;
+  else if ( num == 3 && Compare( temp_token->left->str, temp_token->right->left->str ) == 0 ) return true ;
+  else if ( num == 4 && Compare( temp_token->left->str, temp_token->right->left->str ) >= 0 ) return true ;
+  else if ( num == 5 && Compare( temp_token->left->str, temp_token->right->left->str ) <= 0 ) return true ;
+  else return false ;
+} // Compare_iscorrect()
+
+Token* Distinguish( Token* temp_token, int level ) {
+
+  int num = 0 ; // || 1 為 > || 2 為  < || 3 為 = || 4 為 >= || 5 為 <= || 
+  if ( temp_token->left->str.length() == 0 ) ;
+  else if ( temp_token->left->str.at( temp_token->left->str.length() - 1 ) == '?' ) 
+    temp_token->left->str.erase( temp_token->left->str.size() - 1 ) ;
+
+  if ( temp_token->left->str.length() == 0 ) ;
+  else if ( temp_token->left->str.at( temp_token->left->str.length() - 1 ) == '>' ) num = 1 ;
+  else if ( temp_token->left->str.at( temp_token->left->str.length() - 1 ) == '<' ) num = 2 ;
+  else if ( temp_token->left->str.at( temp_token->left->str.length() - 1 ) == '=' ) num = 3 ;
+
+  if ( temp_token->left->str.length() == 0 ) ;
+  else if ( num > 0 ) temp_token->left->str.erase( temp_token->left->str.size() - 1 ) ;
+
+  if ( temp_token->left->str.length() == 0 ) ;
+  else if ( temp_token->left->str.at( temp_token->left->str.length() - 1 ) == '>' ) num = 4 ;
+  else if ( temp_token->left->str.at( temp_token->left->str.length() - 1 ) == '<' ) num = 5 ; 
+
+  if ( temp_token->left->str.length() == 0 ) ;
+  else if ( num > 3 ) temp_token->left->str.erase( temp_token->left->str.size() - 1 ) ;
+
+  if ( num == 0 && Argument_Num( temp_token ) == 1 ) {
+    temp_token->right = Chang_Argument_right( true, temp_token->right, level ) ;
+    if ( temp_token->right == NULL ) return NULL ; 
+    temp_token->left->str += "?" ; 
+
+    if ( temp_token->left->str == "atom?" && Isatom( temp_token->right->left ) ) 
+      return Token_t_nil( true, temp_token ) ;
+    else if ( temp_token->left->str == "pair?" && Ispair( temp_token->right->left ) )
+      return Token_t_nil( true, temp_token ) ;
+    else if ( temp_token->left->str == "list?" && Islist( temp_token->right->left ) )
+      return Token_t_nil( true, temp_token ) ;
+    else if ( temp_token->left->str == "null?" && Isnull( temp_token->right->left ) )
+      return Token_t_nil( true, temp_token ) ;
+    else if ( temp_token->left->str == "integer?" && Isinteger( temp_token->right->left->str ) )  
+      return Token_t_nil( true, temp_token ) ;
+    else if ( ( temp_token->left->str == "real?" || temp_token->left->str == "number?" ) && 
+              ( Isinteger( temp_token->right->left->str ) || Isfloat( temp_token->right->left->str ) ) )
+      return Token_t_nil( true, temp_token ) ;
+    else if ( temp_token->left->str == "boolean?" && Isboolean( temp_token->right->left ) )
+      return Token_t_nil( true, temp_token ) ;
+    else if ( temp_token->left->str == "string?" && Isstring( temp_token->right->left ) ) 
+      return Token_t_nil( true, temp_token ) ;
+    else if ( temp_token->left->str == "symbol?" && Issymbol( temp_token->right->left ) ) 
+      return Token_t_nil( true, temp_token ) ;
+    else if ( temp_token->left->str == "atom?" || temp_token->left->str == "pair?" || 
+              temp_token->left->str == "list?" || temp_token->left->str == "null?" ||
+              temp_token->left->str == "integer?" || temp_token->left->str == "real?" || 
+              temp_token->left->str == "number?" || temp_token->left->str == "boolean?" || 
+              temp_token->left->str == "string?" || temp_token->left->str == "symbol?" )
+      return Token_t_nil( false, temp_token ) ;
+    else {  
+      int i = IsDefine( temp_token->left ) ;
+      if ( i >= 0 ) {
+        Def temp_define ;
+        temp_define.define_symbol = g_define[i].define_symbol->right->left ;
+        temp_define.token = temp_token->right->left ; 
+        g_define.push_back( temp_define ) ;
+        temp_token = Chang_Argument_left( true, g_define[i].token, level ) ; 
+        g_define.pop_back() ;
+      } // if()
+      else {
+        if ( Issymbol( temp_token->left ) ) Print_unbound_error( temp_token->left ) ;
+        else Print_func_error( temp_token->left ) ;
+
+        return NULL ; 
+      } // else()
+    } // else() 
+  } // if()
+  else if ( num >= 1 && num <= 5 && Argument_Num( temp_token ) >= 2 ) {
+    temp_token->right = Chang_Argument_right( true, temp_token->right, level ) ;
+    if ( temp_token->right == NULL ) return NULL ; 
+
+    if ( temp_token->left->str != "integer" && temp_token->left->str != "string" && 
+         temp_token->left->str != "symbol" && temp_token->left->str != "real" && 
+         temp_token->left->str != "number" ) {
+      if ( num == 1 ) temp_token->left->str += ">?" ;
+      else if ( num == 2 ) temp_token->left->str += "<?" ;
+      else if ( num == 3 ) temp_token->left->str += "=?" ;
+      else if ( num == 4 ) temp_token->left->str += ">=?" ;
+      else if ( num == 5 ) temp_token->left->str += "<=?" ;
+
+      int i = IsDefine( temp_token->left ) ;
+      if ( i >= 0 ) {
+        Def temp_define ;
+        temp_define.define_symbol = g_define[i].define_symbol->right->left ;
+        temp_define.token = temp_token->right->left ; 
+        g_define.push_back( temp_define ) ;
+        temp_token = Chang_Argument_left( true, g_define[i].token, level ) ; 
+        g_define.pop_back() ;
+      } // if()
+      else {
+        if ( Issymbol( temp_token->left ) ) Print_unbound_error( temp_token->left ) ;
+        else Print_func_error( temp_token->left ) ;
+
+        return NULL ; 
+      } // else()
+    } // if()
+
+    for ( Token* temp = temp_token->right ; temp->right != NULL ; temp = temp->right ) {
+      if ( ( temp_token->left->str == "integer" && !Isinteger( temp->left->str ) ) ||
+           ( temp_token->left->str == "string" && !Isstring( temp->left ) ) ||
+           ( temp_token->left->str == "symbol" && !Issymbol( temp->left ) ) ||
+           ( ( temp_token->left->str == "real" || temp_token->left->str == "number" ) && 
+             ( !Isinteger( temp->left->str ) && !Isfloat( temp->left->str ) ) ) ) {
+        Print_cmptype_error( num, temp_token, temp->left ) ;
+        return NULL ;
+      } // if()
+
+    } // for()
+
+    if ( num == 1 ) temp_token->left->str += ">?" ;
+    else if ( num == 2 ) temp_token->left->str += "<?" ;
+    else if ( num == 3 ) temp_token->left->str += "=?" ;
+    else if ( num == 4 ) temp_token->left->str += ">=?" ;
+    else if ( num == 5 ) temp_token->left->str += "<=?" ;
+
+    string str = "" ;
+    for ( Token* temp = temp_token->right ; temp->right != NULL ; temp = temp->right ) {
+      if ( str == "" ) ;
+      else if ( num == 1 && Compare( str, temp->left->str ) <= 0 ) return Token_t_nil( false, temp_token ) ;
+      else if ( num == 2 && Compare( str, temp->left->str ) >= 0 ) return Token_t_nil( false, temp_token ) ;
+      else if ( num == 3 && Compare( str, temp->left->str ) != 0 ) return Token_t_nil( false, temp_token ) ;
+      else if ( num == 4 && Compare( str, temp->left->str ) < 0 ) return Token_t_nil( false, temp_token ) ;
+      else if ( num == 5 && Compare( str, temp->left->str ) > 0 ) return Token_t_nil( false, temp_token ) ;
+
+      str = temp->left->str ;
+    } // for()
+
+    return Token_t_nil( true, temp_token ) ;
+  } // else if()
+  else {
+    if ( num == 1 ) temp_token->left->str += ">" ;
+    else if ( num == 2 ) temp_token->left->str += "<" ;
+    else if ( num == 3 ) temp_token->left->str += "=" ;
+    else if ( num == 4 ) temp_token->left->str += ">=" ;
+    else if ( num == 5 ) temp_token->left->str += "<=" ;
+
+    temp_token->left->str += "?" ;
+    cout << "ERROR (incorrect number of arguments) : " << temp_token->left->str << endl ;
+    return NULL ;
+  } // else()
+
+
+  return temp_token ;
+} // Distinguish()
+
+Token* Chang_Argument_left( bool defined_symbol, Token* temp_token, int level ) {
+  if ( temp_token == NULL ) return temp_token ;
+  else if (  temp_token->left == NULL && temp_token->right == NULL ) return temp_token ;
+  else if ( ! Islist( temp_token ) ) {
+    Print_nonlist_error( temp_token ) ;
+    return NULL ;
+  } // else if()
+
+  if ( Issymbol( temp_token->left ) ) {
+    temp_token = EvalSExp( temp_token, level ) ;
+  } // if()
+  else if ( Isatom( temp_token->left ) ) {
+    Print_func_error( temp_token->left ) ;
+    return NULL ;
+  } // else if() 
+  else if ( temp_token->left->str == "" ) {
+    temp_token->left = Chang_Argument_left( true, temp_token->left, level + 1 ) ; 
+    if ( temp_token->left == NULL ) return NULL ;
+
+    int x = IsDefine( temp_token->left ) ;
+    if ( x >= 0 ) temp_token->left = g_define[x].token ;
+
+    if ( ( temp_token->left->str.size() >= 13 && 
+           temp_token->left->str.substr( 0, 12 ) == "#<procedure " && 
+           temp_token->left->str.substr( temp_token->left->str.size() - 1, 1 ) == ">" )  ) {
+      temp_token = Chang_Argument_left( true, temp_token, level ) ; 
+      if ( temp_token == NULL ) return NULL ;
+    } // if()
+    else {
+      Print_func_error( temp_token->left ) ;
+      return NULL ;
+    } // else() 
+
+
+  } // else if()
+
+  return temp_token ;
+
+} // Chang_Argument_left()
+
+Token* Chang_Argument_right( bool defined_symbol, Token* temp_token, int level ) {
+
+  if ( temp_token == NULL ) return temp_token ;
+  else if ( temp_token->left == NULL && temp_token->right == NULL ) return temp_token ;
+
+  if ( temp_token->left->str == "" ) {
+    temp_token->left = Chang_Argument_left( true, temp_token->left, level + 1 ) ; 
+    if ( temp_token->left == NULL ) return NULL ;
+  } // if()
+  else if ( Issymbol( temp_token->left ) ) {
+    int i = IsDefine( temp_token->left ) ;
+    if ( i >= 0 ) temp_token->left = g_define[i].token ;
+    else if ( Isfunction( temp_token->left->str ) ) {
+      temp_token->left->str = "#<procedure " + temp_token->left->str + ">"  ;
+    } // else if()
+    else {
+      Print_unbound_error( temp_token->left ) ;
+      return NULL ;
+    } // else if()
+  } // else if()
+  else {
+    int i = IsDefine( temp_token->left ) ;
+    if ( i >= 0 ) temp_token->left = g_define[i].token ;
+  } // else if()
+
+  if ( defined_symbol && temp_token->right->str == "" ) {
+    temp_token->right = Chang_Argument_right( true, temp_token->right, level ) ;
+    if ( temp_token->right == NULL ) return NULL ;
+  } // if()
+
+  return temp_token ;
+
+} // Chang_Argument_right()
+
+Token* EvalSExp( Token* temp_token, int level ) {
+  Token* temp = temp_token->left ;
+  bool isprocedure = false ;
+  int x = IsDefine( temp_token->left ) ;
+  if ( x >= 0 ) temp_token->left = g_define[x].token ;
+
+  if ( temp_token->left->str.size() >= 13 && 
+       temp_token->left->str.substr( 0, 12 ) == "#<procedure " && 
+       temp_token->left->str.substr( temp_token->left->str.size() - 1, 1 ) == ">" ) {
+    isprocedure = true ;
+    temp_token->left->str.erase( 0, 12 ) ;
+    temp_token->left->str.erase( temp_token->left->str.size() - 1, 1 ) ;
+  } // if()
+
+
+  if ( temp_token == NULL ) ;
+  else if ( temp_token->left == NULL && temp_token->right == NULL ) ; 
+  else if ( temp_token->left->str == "cons" ) temp_token = Cons( temp_token, level ) ;
+  else if ( temp_token->left->str == "list" ) temp_token = List( temp_token, level ) ;
+  else if ( temp_token->left->str == "quote" ) temp_token = Quote( temp_token, level ) ;
+  else if ( temp_token->left->str == "car" ) temp_token = Car( temp_token, level ) ;
+  else if ( temp_token->left->str == "cdr" ) temp_token = Cdr( temp_token, level ) ;
+  else if ( temp_token->left->str == "not" ) temp_token = Not( temp_token, level ) ;
+  else if ( temp_token->left->str == "eqv?" ) temp_token = Eqv( temp_token, level ) ;
+  else if ( temp_token->left->str == "equal?" ) temp_token = Equal( temp_token, level ) ;
+  else if ( temp_token->left->str == "begin" ) temp_token = Begin( temp_token, level ) ;
+  else if ( temp_token->left->str == "if" ) temp_token = If( temp_token, level ) ;
+  else if ( temp_token->left->str == "cond" ) temp_token = Cond( temp_token, level ) ;
+  else if ( temp_token->left->str == "and" || temp_token->left->str == "or" ) 
+    temp_token = And_Or( temp_token, level ) ;
+  else if ( temp_token->left->str == "+" || temp_token->left->str == "-" || 
+            temp_token->left->str == "*" || temp_token->left->str == "/" ) 
+    temp_token = Plus_Minus_Multi_Divid( temp_token, level ) ;
+  else if ( temp_token->left->str == ">" || temp_token->left->str == "<" ||
+            temp_token->left->str == "=" || temp_token->left->str == ">=" || 
+            temp_token->left->str == "<=" ) temp_token = Compare( temp_token, level ) ;
+  else if ( temp_token->left->str == "string-append" ) temp_token = String_append( temp_token, level ) ;
+  else if ( temp_token->left->str.at( temp_token->left->str.length() - 1 ) == '?' ) 
+    temp_token = Distinguish( temp_token, level ) ;
+  else if ( temp_token->left->str == "exit" && level == 0 ) 
+    temp_token = Exit( temp_token, level ) ;
+  else if ( temp_token->left->str == "define" && level == 0 ) 
+    temp_token = Define( temp_token, level ) ;
+  else if ( temp_token->left->str == "clean-environment" && level == 0 ) 
+    temp_token = Clean_Environment( temp_token, level ) ;
+  else if ( temp_token->left->str == "exit" ) {
+    cout << "ERROR (level of EXIT)" << endl ;
+    temp_token = NULL ;
+  } // else if() 
+  else if ( temp_token->left->str == "define" ) {
+    cout << "ERROR (level of DEFINE)" << endl ;
+    temp_token = NULL ;
+  } // else if() 
+  else if ( temp_token->left->str == "clean-environment" ) {
+    cout << "ERROR (level of CLEAN-ENVIRONMENT)" << endl ;
+    temp_token = NULL ;
+  } // else if()
+  else {
+    int i = IsDefine( temp_token->left ) ;
+    if ( i >= 0 ) {
+      Def temp_define ;
+      temp_define.define_symbol = g_define[i].define_symbol->right->left ;
+      temp_define.token = temp_token->right->left ; 
+      g_define.push_back( temp_define ) ;
+      temp_token = Chang_Argument_left( true, g_define[i].token, level ) ; 
+      g_define.pop_back() ;
+    } // if()
+    else {
+      if ( Issymbol( temp_token->left ) ) Print_unbound_error( temp_token->left ) ;
+      else Print_func_error( temp_token->left ) ;
+
+      temp_token = NULL ; 
+    } // else()
+
+  } // else() 
+
+  if ( isprocedure ) {
+    isprocedure = false ;
+    if ( x >= 0 ) g_define[x].token->str = "#<procedure " + g_define[x].token->str + ">" ;
+    else temp->str = "#<procedure " + temp->str + ">" ;
+  } // if()
+  
+
+  return temp_token ;
+} // EvalSExp() 
+
+int Argument_Num( Token* temp_token ) {
+  if ( temp_token == NULL ) return 0 ;
+  else if ( temp_token->right == NULL ) return 0 ;
+  else if ( temp_token->right->right == NULL ) return 0 ;
+  else return Argument_Num( temp_token->right ) + 1 ;
+} // Argument_Num()
+
+Token* Token_t_nil( bool is_true, Token* temp_token ) {
+  if ( is_true ) temp_token->str = "#t" ;
+  else temp_token->str = "nil" ;
+
+  temp_token->left = NULL ;
+  temp_token->right = NULL ;
+  return temp_token ;
+} // Token_t_nil()
+
+string Symbol_bigger_smaller( int num ) {
+  if ( num == 1 ) return ">" ;
+  else if ( num == 2 ) return "<" ;
+  else if ( num == 3 ) return "=" ;
+  else if ( num == 4 ) return ">=" ;
+  else if ( num == 5 ) return "<=" ;
+  else return "" ;
+} // Symbol_bigger_smaller()
+
+void Print_define_error( Token* temp_token ) {
+  cout << "ERROR (DEFINE format) : " ;
+  Print( temp_token ) ;
+} // Print_define_error()
+
+void Print_cond_error( Token* temp_token ) {
+  cout << "ERROR (COND format) : " ;
+  Print( temp_token ) ;
+} // Print_cond_error()
+
+void Print_cmptype_error( int num, Token* temp_token, Token* print_token ) {
+  if ( num == 1 ) temp_token->left->str += ">?" ;
+  else if ( num == 2 ) temp_token->left->str += "<?" ;
+  else if ( num == 3 ) temp_token->left->str += "=?" ;
+  else if ( num == 4 ) temp_token->left->str += ">=?" ;
+  else if ( num == 5 ) temp_token->left->str += "<=?" ;
+      
+  cout << "ERROR (" <<  temp_token->left->str << " with incorrect argument type) : " ;
+  Print( print_token ) ;
+} // Print_cmptype_error()
+
+void Print_unbound_error( Token* temp_token ) {
+  cout << "ERROR (unbound symbol) : " ;
+  Print( temp_token ) ;
+} // Print_unbound_error()
+
+void Print_nonlist_error( Token* temp_token ) {
+  cout << "ERROR (non-list) : " ; 
+  Print( temp_token ) ;
+} // Print_nonlist_error()
+
+void Print_func_error( Token* temp_token ) {
+  cout << "ERROR (attempt to apply non-function) : " ; 
+  Print( temp_token ) ;
+} // Print_func_error()
+
+Token* Build( Token* temp_token, string &str, char &c, int &line, int &column ) {
+  if ( str == "(" ) {
+    int num = 0 ;
+    if ( !Build_Tree( temp_token, c, str, line, column, num ) ) temp_token = NULL ;
+    else temp_token = temp_token->left ; // 這是因為我這邊沒有在去讀下個Token直接放 "(" // 
+  } // if()
+  else if ( str == "\'" ) { 
+    if ( !Build_quote_Tree( temp_token, c, str, line, column ) ) temp_token = NULL ;
+  } // else if()
+  else if ( str == "." || str == ")" ) {
+    Print_error( str, line, column, 1 ) ; // error //
+    temp_token = NULL ;
+  } // else if()
+  else {
+    temp_token->str = str ;
+    temp_token->line = line ;
+    temp_token->column = column ;
+  } // else() 
+
+  return temp_token ;
+} // Build()
+
+int Print( Token* temp_token ) {
+  if ( temp_token == NULL ) ;
+  else if ( temp_token->str == "" ) {
+
+    Print_Tree( temp_token, "  " ) ;
+
+  } // else if()
+  else if ( temp_token->left == NULL && temp_token->right == NULL ) { // 這為止有一個symbol // 
+    cout << Turn_nil_t_quote( temp_token->str ) << endl ;
+  } // else if()
+  
+  return 1 ;
+} // Print()
+
+void Turn_nil_true( Token* temp_token ) {
+  if ( temp_token == NULL ) ;
+  else {
+    if ( temp_token->left == NULL && temp_token->right == NULL ) {
+      if ( temp_token->str == "" ) temp_token->str = "nil" ;
+      else temp_token->str = Turn_nil_t_quote( temp_token->str ) ;
+    } // if()
+
+    Turn_nil_true( temp_token->left ) ;
+    Turn_nil_true( temp_token->right ) ;
+  } // else()
+}  // Turn_nil_true()
+
+// pretty print // 
+void Print_Tree( Token* temp_token, string space ) { 
+  // 一個遞迴為一個 ( ) space 為當前經過幾個 "(" 則有幾個 * 2 的 " " // 
+
+  // 當進一個遞迴印出一開始的 "(" ( NULL是預防不是一個 "(" ) // 
+  if ( temp_token->left != NULL && temp_token->right != NULL ) cout << "( " ; 
+
+  // (1)if 當左邊為""時並且不是最左邊 則進到左邊跑遞迴 //
+  // (2)else if 當左邊為""時並且是最左邊輸出nil 代表最左邊放nil //
+  // (3)else 剩下則代表左邊的為 S-exp 印出 // 
+  if ( temp_token->left != NULL && temp_token->right != NULL && temp_token->left->str == "" ) {
+    Print_Tree( temp_token->left, space + "  " ) ;
+  } // if() 
+  else cout << temp_token->left->str << endl ;
+
+  // 往右判別到最後一個前則停 // 
+  while ( temp_token->right->str == "" && 
+          temp_token->right->left != NULL && temp_token->right->right != NULL ) {
+    temp_token = temp_token->right ;
+
+    // (1)if 當左邊為""時並且是最左邊輸出nil 代表最左邊放nil //
+    // (2)else if 當左邊為""時並且不是最左邊 則進到左邊跑遞迴 並在進去前要印出space 使得下一個 ( 可以對齊 // 
+    // (3)else 剩下則代表左邊的為 S-exp 印出 // 
+
+    if ( temp_token->left->str == "" ) {
+      cout << space ;
+      Print_Tree( temp_token->left, space + "  " ) ;
+    } // if()
+    else cout << space << temp_token->left->str << endl ;
+  } // while()
+
+  // 當最右邊的為 S-exp 則印出 // 
+  if ( temp_token->right->str != "nil" ) {
+    cout << space << "." << endl ;
+    cout << space <<  Turn_nil_t_quote( temp_token->right->str ) << endl ;
+  } // if()
+
+  // 代表括號結束要印 ")" // 
+  cout << space.erase( 0, 2 ) << ")" << endl ;
+} // Print_Tree()
+
+// 碰到 "\'" 時進入建立一棵 quote 的樹從 傳入的節點開始 // 
+bool Build_quote_Tree( Token* temp_token, char &c, string &str, int &line, int &column ) {
+  // 將進來的節點當作放一個 "(" 之後再將 quote 放入左下並且將節點指到右下 // 
+   
+  temp_token->left = New_Token( temp_token->left ) ;
+  temp_token->right = New_Token( temp_token->right ) ;
+  temp_token->left->str = str ;
+  temp_token = temp_token->right ;
+  temp_token->left = New_Token( temp_token->left ) ;
+  temp_token->right = New_Token( temp_token->right ) ;
+
+  if ( str != "" ) str = Get_Token( c, line, column ) ;
+  if ( Error_EOF( str, c, line, column ) ) return false ;
+  
+  // (1)if 為 "\'" 後面不能為 "." 和 ")" // 
+  // (2)else if 當碰到左括號進左括號建樹 //
+  // (3)else if 當碰到 "\'" 則再從其左下開始再做一次 // 
+  // (4)else 其他為 S-exp 放入其左下 // 
+  if ( str == "." || str == ")" ) {
+    Print_error( str, line, column, 1 ) ; // error //
+    return false ;
+  } // if()
+  else if ( str == "(" ) {
+    int num = 0 ;
+    if ( !Build_Tree( temp_token->left, c, str, line, column, num ) ) return false ;
+    else temp_token->left = temp_token->left->left ;
+  } // if()
+  else if ( str == "\'" ) {
+    if ( !Build_quote_Tree( temp_token->left, c, str, line, column ) ) return false ;
+  } // if()
+  else {
+    // str = Turn_nil_t_quote( str ) ;
+    if ( str != "nil" ) temp_token->left->str = str ;
+    temp_token->left->line = line ;
+    temp_token->left->column = column ;
+  } // else()
+
+  return true ;
+} // Build_quote_Tree()
+
+bool Build_Tree( Token* temp_token, char &c, string &str, int &line, int &column, int &exp_num ) {
+  // 碰到 "(" 的時候下個一定只能是 S-exp 或 "(" 或 ")" //
+  // 當碰到 S-exp 的時候之後就可以有 "." 但是 "." 不能有兩個 //
+  // 這之中都是以在判別完後要抓下一個token // 
+  bool can_dote = false ; // 可不可以有 "." ( // 
+
+  while ( str != ")" && str != "" ) {
+
+    if ( str == "(" ) {
+      //  在此node建立左右再讀入下個token丟入左邊node進遞迴 等於是讀了一個進下個判別 // 
+      exp_num++ ;
+      temp_token->left = New_Token( temp_token->left ) ;
+      temp_token->right = New_Token( temp_token->right ) ;
+
+      if ( str != "" ) str = Get_Token( c, line, column ) ;
+      if ( Error_EOF( str, c, line, column ) ) return false ;
+      
+      if ( !Build_Tree( temp_token->left, c, str, line, column, exp_num ) ) return false ;
+      else {
+        temp_token = temp_token->right ;
+        can_dote = true ;
+      } // else()
+    } // if()
+    else if ( str == "\'" ) {
+      // 如果是quote 則新增左右再把左邊node丟建 quote的樹 // 
+      temp_token->left = New_Token( temp_token->left ) ;
+      temp_token->right = New_Token( temp_token->right ) ;
+
+      if ( !Build_quote_Tree( temp_token->left, c, str, line, column ) ) return false ;
+      else temp_token = temp_token->right ;
+
+      if ( str != "" ) str = Get_Token( c, line, column ) ;
+      if ( Error_EOF( str, c, line, column ) ) return false ;
+    } // if()
+    else if ( str == "." && can_dote ) {
+      // 碰到點時 抓下個token // 
+      // 在這之中都不須將node往右下指因為這必須為最後一個 // 
+      if ( str != "" ) str = Get_Token( c, line, column ) ;
+      if ( Error_EOF( str, c, line, column ) ) return false ;
+
+      if ( str == "(" ) {
+        // 在進下一層遞迴 // 
+        exp_num++ ;
+        if ( str != "" ) str = Get_Token( c, line, column ) ;
+        if ( Error_EOF( str, c, line, column ) ) return false ;
+
+        if ( !Build_Tree( temp_token, c, str, line, column, exp_num ) ) return false ; 
+      } // if()
+      else if ( str == "\'" ) { 
+        // 當碰到 "\'" 或 ")" 在 "."後 面 則輸出error // 
+        temp_token->left = New_Token( temp_token->left ) ;
+        temp_token->right = New_Token( temp_token->right ) ;
+
+        if ( !Build_quote_Tree( temp_token->left, c, str, line, column ) ) return false ;
+
+        if ( str != "" ) str = Get_Token( c, line, column ) ;
+        if ( Error_EOF( str, c, line, column ) ) return false ;
+      } // else if()
+      else if ( str == "." || str == ")" ) { 
+        // 當碰到 "." 或 ")" 在 "."後 面 則輸出error // 
+        Print_error( str, line, column, 1 ) ; // error //
+        return false ;
+      } // else if()
+      else {
+        // 這為 "." 後面是 S-exp 放入該node // 
+        // str = Turn_nil_t_quote( str ) ;
+        if ( str != "nil" ) temp_token->str = str ;
+        temp_token->line = line ;
+        temp_token->column = column ;
+        if ( str != "" ) str = Get_Token( c, line, column ) ;
+        if ( Error_EOF( str, c, line, column ) ) return false ;
+      } // else()   
+      
+      if ( str != ")" ) {
+        // 判別若 "." 後面為 S-exp 則下個 Token 不是 ")" 代表此地方該有 ")" 但沒有 // 
+        Print_error( str, line, column, 2 ) ; // error //
+        return false ;
+      } // if()
+      
+      exp_num-- ;
+      can_dote = false ;   
+      if ( exp_num > 0 && str != "" ) str = Get_Token( c, line, column ) ;
+      if ( Error_EOF( str, c, line, column ) ) return false ;
+      return true ;
+    } // else if()
+    else if ( str == "." ) {
+      // 不能有 "." 但有 // 
+      Print_error( str, line, column, 1 ) ; // error //
+      return false ;
+    } // else if()
+    else {
+      // 沒有 "." 在前的 S-exp 放左邊往右指 
+      // str = Turn_nil_t_quote( str ) ;
+      temp_token->left = New_Token( temp_token->left ) ;
+      temp_token->right = New_Token( temp_token->right ) ;
+      if ( str != "nil" ) temp_token->left->str = str ;
+      temp_token->left->line = line ;
+      temp_token->left->column = column ;
+      temp_token = temp_token->right ;
+
+      if ( str != "" ) str = Get_Token( c, line, column ) ;
+      if ( Error_EOF( str, c, line, column ) ) return false ;
+
+      can_dote = true ;
+      
+    } // else()
+    
+  } // while()
+
+  exp_num-- ;
+  if ( exp_num > 0 && str != "" ) str = Get_Token( c, line, column ) ;
+  if ( Error_EOF( str, c, line, column ) ) return false ;
+
+  return true ;
+} // Build_Tree()
+
+string Get_Token( char &c, int &line, int &column ) {
+  // 都是抓到Token最後一個位元 // 
+  string str ;
+  GetChar( c ) ;
+  
+  while ( ( c == '\n' || c == '\t' || c == ' ' ) && c != EOF ) {
+
+    if ( c == '\n' && !g_first_line_empty ) {
+      g_first_line_empty = true ;
+      g_running_line-- ;
+    } // if()
+
+    GetChar( c ) ;
+  } // while()
+
+  if ( c == EOF ) return "" ;
+  else if ( c == '\"' ) { 
+    line = g_running_line ;
+    column = g_running_column ;
+    str = str + c ;
+    if ( cin.peek() == '\n' ) {
+      // 紀錄\n的位置 // 
+      line = g_running_line ;
+      column = g_running_column + 1 ;
+    } // if() 
+    
+    GetChar( c ) ;
+    while ( c != '\"' && c != '\n' && c != EOF ) {
+      if ( cin.peek() == '\n' ) {
+        line = g_running_line ;
+        column = g_running_column + 1 ;
+      } // if() 
+
+      if ( c == '\\' ) {
+        GetChar( c ) ;
+        if ( c != '\n' && cin.peek() == '\n' ) {
+          line = g_running_line ;
+          column = g_running_column + 1 ;
+        } // if() 
+
+        if ( c == 'n' ) str = str + '\n' ;
+        else if ( c == 't' ) str = str + '\t' ;
+        else if ( c == '\\' ) str = str + '\\' ;
+        else if ( c == '\'' ) str = str + '\'' ;
+        else if ( c == '\"' ) str = str + '\"' ;
+        else str = str + '\\' + c ;
+
+        if ( c == 'n' || c == 't' || c == '\\' || c == '\'' || c == '\"' ) GetChar( c ) ;
+      } // if()
+      else {
+        str = str + c ;
+        GetChar( c ) ;
+      } // else()
+
+    } // while()
+
+    if ( c == '\n' || c == EOF ) str = "" ; // 當 " 沒有第二個 close 的 // 
+    else str = str + c ;
+  } // else if()
+  else if ( c == '\'' ) {
+    line = g_running_line ;
+    column = g_running_column ;
+    str = str + c ; 
+  } // if()
+  else if ( c == ';' ) {
+    str = str + c ; 
+    while ( c != '\n' && c != EOF ) c = getchar() ;
+    
+    if ( !g_first_line_empty ) g_running_line-- ;
+    g_running_line++ ;
+    g_running_column = 0 ;
+    g_first_line_empty = true ;
+
+    if ( c == EOF ) return "" ;
+    return Get_Token( c, line, column ) ;
+  } // else if()
+  else if ( c == '(' ) {
+    line = g_running_line ;
+    column = g_running_column ;
+    str = str + c ; 
+  } // if()
+  else if ( c == ')' ) {
+    line = g_running_line ;
+    column = g_running_column ;
+    str = str + c ; 
+  } // if() 
+  else {
+    line = g_running_line ;
+    column = g_running_column ;
+    while ( cin.peek() != '\t' && cin.peek() != ' ' && cin.peek() != '\n' && cin.peek() != '\"' &&
+            cin.peek() != ';' && cin.peek() != EOF && cin.peek() != '(' && cin.peek() != ')' 
+            && cin.peek() != '\'' ) {
+      str = str + c ;
+      GetChar( c ) ;
+    } // while()
+
+    str = str + c ;
+
+    Change_float( str ) ;
+  } // else()
+
+  g_first_line_empty = true ; 
+  return str ;
+} // Get_Token()
+
+void GetChar( char &c ) {
+  c = getchar() ;
+  if ( c == '\n' ) {
+    g_running_line++ ;
+    g_running_column = 0 ;
+  } // if()
+  else g_running_column++ ;
+} // GetChar()
+
+string Turn_nil_t_quote( string str ) {
+  if ( str == "#t" || str == "t" ) 
+    return "#t" ;
+  else if ( str == "#f" || str == "nil" )
+    return "nil" ;
+  else if ( str == "\'" || str == "quote" )
+    return "quote" ;
+  else return str ;
+} // Turn_nil_t_quote()
+
+void Change_float( string &str ) {
+  int dote_index = -1 ;
+  int i = 0 ; 
+
+  if ( Isinteger( str ) ) str = Double_To_Str( Str_To_Double( str ) ) ;
+  else if ( Isfloat( str ) ) {
+    double nn = Str_To_Double( str ) ;
+    str = Double_To_Str( Str_To_Double( str ) ) ;
+    for ( ; i < str.length() ; i++ ) {
+      if ( str.at( i ) == '.' ) dote_index = i ;
+    } // for()
+
+    if ( dote_index == -1 ) {
+      str += "." ;  
+      dote_index = str.length() - 1 ;
+    } // if()
+
+    int num = 3 - ( str.length() - ( dote_index + 1 ) ) ;
+    int more_digit = ( str.length() - dote_index - 3 ) ;
+
+    for ( int j = 0 ; j < num ; j++ )
+      str += "0" ;
+
+    if ( dote_index + 4 < str.length() && str.at( dote_index + 4 ) >= '5' ) {
+      str.erase( dote_index + 4, more_digit ) ;
+      if ( str.at( 0 ) == '-' ) str = Double_To_Str( Str_To_Double( str ) - 0.001 ) ;
+      else str = Double_To_Str( Str_To_Double( str ) + 0.001 ) ;
+    } // if()
+    else if ( dote_index + 4 < str.length() ) str.erase( dote_index + 4, more_digit ) ;
+  } // else if()
+
+} // Change_float()
+
+bool Error_EOF( string str, char c, int line, int column ) { 
+// 當遇到 EOF 和 " 沒有第二個 " 的ERROR時回傳 TRUE // 
+  if ( str == "" && c == EOF ) {
+    cout << "ERROR (no more input) : END-OF-FILE encountered" << endl ;
+    return true ;
+  } // if()
+  else if ( str == "" ) {
+    cout << "ERROR (no closing quote) : END-OF-LINE encountered at Line " 
+         << line << " Column " << column << endl ;
+    return true ;
+  } // else if()
+  else return false ;
+} // Error_EOF()
+
+void Print_error( string str, int line, int column, int choice ) {
+  char c = '\0' ;
+  if ( choice == 1 ) 
+    cout << "ERROR (unexpected token) : atom or '(' expected when token at Line "
+         << line << " Column " << column << " is >>" << str << "<<" << endl ;
+  else if ( choice == 2 )
+    cout << "ERROR (unexpected token) : ')' expected when token at Line "
+         << line << " Column " << column << " is >>" << str << "<<" << endl ;
+  while ( cin.peek() != '\n' && cin.peek() != EOF ) {
+    c = getchar() ;
+  } // while()
+
+} // Print_error()
+
+Token* New_result( string str ) {
+  Token* result ;
+  result = New_Token( result ) ;
+  result->str = str ;
+  return result ;
+} // New_result()
+
+Token* New_Token( Token* temp_token ) {
+  temp_token = new Token() ;
+  temp_token->type = "" ;
+  temp_token->str = "" ;
+  temp_token->line = 0 ;
+  temp_token->column = 0;
+  temp_token->left = NULL ;
+  temp_token->right = NULL ;
+  return temp_token ;
+} // New_Token()
+
+Def* New_Define( Def* temp_define ) {
+
+  temp_define->define_symbol = NULL ;
+  temp_define->token = NULL ;
+  return temp_define ;
+} // New_Define()
+
+double Str_To_Double( string str ) {
+  double f = 0.0 ;
+  stringstream str_to_double ;
+  str_to_double << str ;
+  str_to_double >> f ;
+  return f ;
+} // Str_To_Double()
+
+string Double_To_Str( double num ) {   
+  stringstream double_to_str ;
+  double_to_str << num ;
+  return double_to_str.str();
+} // Double_To_Str()
+
+bool Isfunction( string str ) {
+  if ( str == "cons" || str == "list" || str == "quote" || str == "define" || str == "exit" || 
+       str == "clean-environment" || str == "car" || str == "cdr" || str == "+" || str == "-" || 
+       str == "*" || str == "/" || str == "not" || str == "and" || str == "or" || 
+       str == ">" || str == "<" || str == "=" || str == ">=" || str == "<=" || 
+       str == "string-append" || str == "string>?" || str == "string<?" || str == "string=?" || 
+       str == "string>=?" || str == "string<=?" || str == "eqv?" || str == "equal?" || str == "begin" || 
+       str == "if" || str == "cond" || str == "atom?" || str == "pair?" || str == "list?" || 
+       str == "null?" || str == "integer?" || str == "real?" || str == "number? " || str == "string?" || 
+       str == "boolean?" || str == "symbol?" || str == "integer>?" || str == "integer<?" ||
+       str == "integer>=?" || str == "integer<=?" || str == "integer=?" || str == "symbol>?" ||
+       str == "symbol<?" || str == "symbol>=?" || str == "symbol<=?" || str == "symbol=?" || 
+       str == "real>?" || str == "real<?" || str == "real=?" || str == "real>=?" || str == "real<=?" ||
+       str == "number>?" || str == "number<?" || str == "number=?" || str == "number>=?" || 
+       str == "number<=?" ) return true ;
+  else return false ;
+} // Isfunction()
+
+bool Isinteger( string str ) {
+
+  int i = 0 ;
+
+  if ( str.length() == 0 ) return false ;
+  else if ( str.at( 0 ) == '+' || str.at( 0 ) == '-' ) i++ ;
+
+  if ( str.length() < i + 1 ) return false ;
+  
+  for ( ; i < str.length() ; i++ ) {
+    if ( str.at( i ) < '0' || str.at( i ) > '9' ) return false ;
+  } // for()
+
+  return true ;
+} // Isinteger()
+
+bool Isfloat( string str ) { 
+  int i = 0 ;
+  bool have_dote = false ;
+
+  if ( Isinteger( str ) ) return false ;
+
+  if ( str.length() == 0 ) return false ;
+  else if ( str.at( 0 ) == '+' || str.at( 0 ) == '-' ) i++ ;
+
+  if ( str.length() < i + 1 ) return false ;
+  else if ( str.length() == i + 1 && str.at( i ) == '.' ) return false ; 
+  
+  for ( ; i < str.length() ; i++ ) {
+    if ( str.at( i ) == '.' && have_dote ) return false ;
+    else if ( str.at( i ) == '.' ) have_dote = true ;
+    else if ( str.at( i ) < '0' || str.at( i ) > '9' ) return false ;
+  } // for()
+  
+  return true ;
+} // Isfloat()
